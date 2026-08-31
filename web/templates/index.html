@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pixoo Local Control</title>
+  <style>
+    :root { --bg:#12141a; --panel:#1b1e27; --line:#2a2e3a; --fg:#e7e9ee; --dim:#9aa0ad;
+            --green:#2ecc71; --red:#e74c3c; --amber:#f1c40f; --blue:#4f7cff; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--fg);
+           font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    header { padding:14px 18px; border-bottom:1px solid var(--line); display:flex;
+             align-items:center; gap:12px; flex-wrap:wrap; }
+    header h1 { font-size:18px; margin:0; font-weight:600; }
+    .badge { padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;
+             background:#333; color:#fff; }
+    .wrap { max-width:900px; margin:0 auto; padding:18px; display:grid; gap:18px;
+            grid-template-columns:1fr 1fr; }
+    @media (max-width:640px){ .wrap{ grid-template-columns:1fr; } }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px;
+             padding:16px; }
+    .panel h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em;
+                color:var(--dim); margin:0 0 12px; }
+    .preview { display:flex; justify-content:center; align-items:center; }
+    .preview img { width:256px; height:256px; image-rendering:pixelated;
+                   image-rendering:crisp-edges; border-radius:8px; border:1px solid var(--line);
+                   background:#000; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    td { padding:4px 2px; border-bottom:1px solid var(--line); }
+    td:first-child { color:var(--dim); width:46%; }
+    .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px;
+           vertical-align:middle; background:#666; }
+    .on { background:var(--green); } .off { background:var(--red); } .warn{ background:var(--amber); }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; }
+    button { background:#242835; color:var(--fg); border:1px solid var(--line); border-radius:8px;
+             padding:9px 12px; font-size:13px; cursor:pointer; }
+    button:hover { border-color:var(--blue); }
+    button.primary { background:var(--blue); border-color:var(--blue); }
+    button.danger { border-color:var(--red); }
+    .row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    input[type=range]{ flex:1; }
+    .val { font-variant-numeric:tabular-nums; min-width:44px; text-align:right; }
+    #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+             background:#000c; border:1px solid var(--line); padding:8px 14px; border-radius:8px;
+             font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; }
+    .muted{ color:var(--dim); font-size:12px; }
+    code{ background:#0c0e13; padding:1px 5px; border-radius:4px; }
+    dialog{ background:var(--panel); color:var(--fg); border:1px solid var(--line);
+            border-radius:14px; padding:0; width:min(560px,94vw); max-height:90vh; }
+    dialog::backdrop{ background:#000a; }
+    .dlghead{ display:flex; align-items:center; gap:10px; padding:14px 16px;
+              border-bottom:1px solid var(--line); }
+    .dlghead h3{ margin:0; font-size:15px; } .grow{ flex:1; }
+    .dlgbody{ padding:16px; overflow:auto; max-height:74vh; }
+    label{ color:var(--dim); font-size:12px; }
+    input[type=time], input[type=text]{ background:#0e1016; color:var(--fg);
+      border:1px solid var(--line); border-radius:6px; padding:6px; font-size:13px; }
+    .dayrow{ display:grid; grid-template-columns:52px 30px 1fr 1fr; gap:8px;
+             align-items:center; margin-bottom:7px; }
+    .dayrow .d{ font-weight:600; } .dayrow.off input{ opacity:.35; }
+    .qrbox{ display:flex; gap:16px; flex-wrap:wrap; }
+    .qrcard{ background:#0e1016; border:1px solid var(--line); border-radius:10px;
+             padding:12px; text-align:center; }
+    .qrcard .qr{ background:#fff; padding:8px; border-radius:8px; display:inline-block; }
+    h4{ margin:16px 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--dim); }
+    .svc{ border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🟦 Pixoo Local Control</h1>
+    <span id="stateBadge" class="badge">…</span>
+    <span class="muted">Pixoo {{ pixoo_ip }} · bootstrap/MQTT {{ advertise_ip }}</span>
+  </header>
+
+  <div class="wrap">
+    <div class="panel preview">
+      <img id="preview" alt="64x64 preview" src="/api/preview.png">
+    </div>
+
+    <div class="panel">
+      <h2>Status</h2>
+      <table id="statusTable">
+        <tr><td>State</td><td id="s_state">–</td></tr>
+        <tr><td>Ping</td><td id="s_ping">–</td></tr>
+        <tr><td>HTTP API</td><td id="s_http">–</td></tr>
+        <tr><td>MQTT (Pixoo)</td><td id="s_mqtt">–</td></tr>
+        <tr><td>Active transport</td><td id="s_transport">–</td></tr>
+        <tr><td>Brightness</td><td id="s_bright">–</td></tr>
+        <tr><td>Last bootstrap</td><td id="s_boot">–</td></tr>
+        <tr><td>Last frame sent</td><td id="s_frame">–</td></tr>
+        <tr><td>Heartbeats</td><td id="s_hb">–</td></tr>
+      </table>
+    </div>
+
+    <div class="panel" style="grid-column:1/-1">
+      <h2>Controls</h2>
+      <div class="row">
+        <span class="muted">Brightness</span>
+        <input type="range" id="bright" min="0" max="100" value="30">
+        <span class="val" id="brightVal">30</span>
+        <button class="primary" onclick="setBrightness()">Set</button>
+      </div>
+      <div class="controls">
+        <button onclick="act('/api/screen/on')">Display On</button>
+        <button class="danger" onclick="act('/api/screen/off')">Display Off</button>
+        <button onclick="openSchedule()">⏰ Schedule</button>
+        <button onclick="openSmart()">📱 Smart Home</button>
+        <button onclick="act('/api/test-pattern')">Send Test Pattern</button>
+        <button class="primary" onclick="act('/api/dashboard/push')">Push Dashboard</button>
+        <button onclick="act('/api/reconnect')">Recheck / Reconnect</button>
+      </div>
+      <p class="muted" style="margin:12px 0 0">
+        Logs: <code>docker logs -f pixoo-local</code> · Config (no secrets):
+        <code>/api/config</code>. LAN-only; never exposed to the WAN.
+      </p>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <dialog id="schedDlg">
+    <div class="dlghead">
+      <h3>⏰ Screen Schedule</h3><span class="grow"></span>
+      <label style="display:flex;align-items:center;gap:6px;color:var(--fg)">
+        <input type="checkbox" id="schedEnabled"> enabled</label>
+      <button onclick="schedDlg.close()">✕</button>
+    </div>
+    <div class="dlgbody">
+      <p class="muted">Per weekday, tick the day and set on/off (24h). Off drives brightness to 0. A manual on/off overrides until the next scheduled time. Timezone: <code id="schedTz">Europe/Berlin</code>.</p>
+      <div class="dayrow" style="color:var(--dim);font-size:11px">
+        <span>Day</span><span>On?</span><span>On time</span><span>Off time</span></div>
+      <div id="schedDays"></div>
+      <div style="margin-top:12px"><button class="primary" onclick="saveSchedule()">Save schedule</button>
+        <span id="schedMsg" class="muted"></span></div>
+    </div>
+  </dialog>
+
+  <dialog id="smartDlg">
+    <div class="dlghead"><h3>📱 Smart Home</h3><span class="grow"></span>
+      <button onclick="smartDlg.close()">✕</button></div>
+    <div class="dlgbody">
+      <p class="muted">Turn the screen on/off by voice or app via <b>Home Assistant</b> (bridges to Apple Home, Alexa and Google). Scan to open the pages you need on your phone:</p>
+      <div class="qrbox">
+        <div class="qrcard"><div class="qr" id="qrControl"></div><div class="muted" style="margin-top:6px">This control page</div></div>
+        <div class="qrcard"><div class="qr" id="qrHa"></div><div class="muted" style="margin-top:6px">Home Assistant</div></div>
+      </div>
+      <div style="margin-top:10px"><label>Home Assistant URL (for the QR)</label><br>
+        <input type="text" id="haUrl" placeholder="http://homeassistant.local:8123" style="width:100%" oninput="renderHaQr()"></div>
+      <h4>Connect the switch</h4>
+      <div class="svc"><b>Home Assistant</b> — a switch <code id="entName">Pixoo Screen</code> (<code id="entId">switch.pixoo_screen</code>) appears automatically via MQTT discovery. Settings → Devices &amp; Services → MQTT.</div>
+      <div class="svc"><b>Apple Home</b> — HA → enable <b>HomeKit Bridge</b> and include the switch; add it in the Apple Home app (or scan HA's HomeKit code there).</div>
+      <div class="svc"><b>Alexa / Google</b> — expose the switch via HA Cloud (Nabu Casa) or your existing Alexa/Google link, then say “turn Pixoo Screen off”.</div>
+      <p class="muted">MQTT (shared broker <code id="mqttHost">10.10.20.50:1883</code>): command <code id="tCmd">–</code> · state <code id="tState">–</code></p>
+    </div>
+  </dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    function toast(m){ const t=$('toast'); t.textContent=m; t.style.opacity=1;
+      setTimeout(()=>t.style.opacity=0, 1800); }
+    function dot(v){ return '<span class="dot '+(v===true?'on':(v===false?'off':'warn'))+'"></span>'; }
+    const STATE_COLOR = { OFFLINE:'#e74c3c', PING_ONLY:'#f1c40f', BOOTSTRAP_SEEN:'#f1c40f',
+      MQTT_CONNECTED:'#4f7cff', API_READY:'#2ecc71', DISPLAY_ACTIVE:'#2ecc71', ERROR:'#e74c3c' };
+
+    async function refresh(){
+      try{
+        const r = await fetch('/api/status', {cache:'no-store'});
+        if(!r.ok) throw new Error(r.status);
+        const s = await r.json();
+        const b = $('stateBadge'); b.textContent = s.state || '?';
+        b.style.background = STATE_COLOR[s.state] || '#555';
+        $('s_state').textContent = s.state || '–';
+        $('s_ping').innerHTML = dot(s.ping) + (s.ping?'reachable':'offline');
+        $('s_http').innerHTML = dot(s.http_api) + (s.http_api?'ready':'closed');
+        $('s_mqtt').innerHTML = dot(s.mqtt_connected) + (s.mqtt_connected?'connected':'no');
+        $('s_transport').textContent = s.transport || '–';
+        $('s_bright').textContent = (s.brightness!=null? s.brightness : '–');
+        $('s_boot').textContent = s.last_bootstrap_request || '–';
+        $('s_frame').textContent = s.last_frame_sent || '–';
+        $('s_hb').textContent = (s.heartbeats_answered!=null? s.heartbeats_answered : '–');
+        if(s.brightness!=null && document.activeElement!==$('bright')){
+          $('bright').value=s.brightness; $('brightVal').textContent=s.brightness; }
+      }catch(e){ $('stateBadge').textContent='unreachable'; }
+    }
+    function refreshPreview(){ $('preview').src = '/api/preview.png?ts=' + Date.now(); }
+
+    async function act(url){
+      try{ const r=await fetch(url,{method:'POST'}); const j=await r.json();
+        toast(j.ok?'OK':('Failed: '+(j.error||r.status))); refresh(); setTimeout(refreshPreview,400); }
+      catch(e){ toast('Error: '+e); }
+    }
+    async function setBrightness(){
+      const v=parseInt($('bright').value,10);
+      try{ const r=await fetch('/api/brightness',{method:'POST',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify({value:v})});
+        const j=await r.json(); toast(j.ok?('Brightness '+v):('Failed: '+(j.error||''))); refresh(); }
+      catch(e){ toast('Error: '+e); }
+    }
+    $('bright').addEventListener('input', e=>$('brightVal').textContent=e.target.value);
+
+    // ---- schedule editor ----
+    const schedDlg=$('schedDlg'), smartDlg=$('smartDlg');
+    const DAYS=[['mon','MON'],['tue','TUE'],['wed','WED'],['thu','THU'],['fri','FRI'],['sat','SAT'],['sun','SUN']];
+    function openSchedule(){ schedDlg.showModal(); loadSchedule(); }
+    async function loadSchedule(){
+      let data={enabled:false,timezone:'Europe/Berlin',days:{}};
+      try{ data=await (await fetch('/api/schedule')).json(); }catch(e){}
+      $('schedEnabled').checked=!!data.enabled;
+      $('schedTz').textContent=data.timezone||'Europe/Berlin';
+      const c=$('schedDays'); c.innerHTML=''; $('schedMsg').textContent='';
+      DAYS.forEach(([k,lbl])=>{
+        const dc=(data.days||{})[k]||{}, active=!!(dc.on||dc.off);
+        const row=document.createElement('div'); row.className='dayrow'+(active?'':' off');
+        const d=document.createElement('span'); d.className='d'; d.textContent=lbl;
+        const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=active;
+        const on=document.createElement('input'); on.type='time'; on.value=dc.on||'07:00'; on.dataset.f='on';
+        const off=document.createElement('input'); off.type='time'; off.value=dc.off||'23:00'; off.dataset.f='off';
+        on.disabled=off.disabled=!active;
+        cb.dataset.k=k;
+        cb.onchange=()=>{ row.classList.toggle('off',!cb.checked); on.disabled=off.disabled=!cb.checked; };
+        row.append(d,cb,on,off); c.appendChild(row);
+      });
+    }
+    async function saveSchedule(){
+      const days={};
+      $('schedDays').querySelectorAll('.dayrow').forEach(row=>{
+        const cb=row.querySelector('input[type=checkbox]');
+        if(cb.checked){ const k=cb.dataset.k;
+          days[k]={ on:row.querySelector('input[data-f=on]').value,
+                    off:row.querySelector('input[data-f=off]').value }; }
+      });
+      const body={enabled:$('schedEnabled').checked, timezone:$('schedTz').textContent, days};
+      try{ const r=await fetch('/api/schedule',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const j=await r.json(); $('schedMsg').textContent=j.ok?'saved ✓':('error: '+(j.error||'')); if(j.ok)setTimeout(refresh,500); }
+      catch(e){ $('schedMsg').textContent='error: '+e; }
+    }
+
+    // ---- smart home + QR ----
+    function qr(el,text){ el.innerHTML=''; if(!text)return;
+      try{ new QRCode(el,{text:text,width:150,height:150,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M}); }
+      catch(e){ el.textContent='QR n/a'; } }
+    let SMART={};
+    function openSmart(){ smartDlg.showModal(); loadSmart(); }
+    async function loadSmart(){
+      try{ SMART=await (await fetch('/api/smarthome')).json(); }catch(e){ SMART={}; }
+      qr($('qrControl'), SMART.control_url||location.origin+'/');
+      $('entName').textContent=SMART.entity_name||'Pixoo Screen';
+      $('entId').textContent=SMART.entity_id||'switch.pixoo_screen';
+      const m=SMART.mqtt||{}; $('mqttHost').textContent=(m.host||'?')+':'+(m.port||1883);
+      const t=SMART.topics||{}; $('tCmd').textContent=t.command||'–'; $('tState').textContent=t.state||'–';
+      let saved=''; try{ saved=localStorage.getItem('pixoo_ha_url')||''; }catch(e){}
+      $('haUrl').value=saved; renderHaQr();
+    }
+    function renderHaQr(){ const u=$('haUrl').value.trim();
+      try{ localStorage.setItem('pixoo_ha_url',u); }catch(e){} qr($('qrHa'), u); }
+
+    refresh(); refreshPreview();
+    setInterval(refresh, 3000);
+    setInterval(refreshPreview, 5000);
+  </script>
+</body>
+</html>

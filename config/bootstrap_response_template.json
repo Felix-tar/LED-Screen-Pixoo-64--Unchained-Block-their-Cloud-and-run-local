@@ -1,0 +1,19 @@
+{
+  "ReturnCode": 0,
+  "ReturnMessage": "",
+  "DevicePublicIP": "{{DEVICE_PUBLIC_IP}}",
+  "IP": "{{MQTT_IP}}",
+  "lot": 0,
+  "lat": 0,
+  "SummerZone": "{{SUMMER_ZONE}}",
+  "TimeZoneCode": "{{TIMEZONE_CODE}}",
+  "UTCTime": "{{UTC_TIME}}",
+  "DeviceId": "{{DEVICE_ID}}",
+  "LogLevel": 0,
+  "IsResetAll": 0,
+  "DeviceToken": "{{DEVICE_TOKEN}}",
+  "ServerType": 1,
+  "LastClockId": "{{LAST_CLOCK_ID}}",
+  "Command": "Device/InitV2",
+  "PacketFlag": "{{PACKET_FLAG}}"
+}

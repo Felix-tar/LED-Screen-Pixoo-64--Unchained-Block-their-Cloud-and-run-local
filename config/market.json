@@ -1,0 +1,42 @@
+{
+  "crypto": [
+    {
+      "id": "bitcoin",
+      "symbol": "BTC",
+      "name": "Bitcoin"
+    },
+    {
+      "id": "ethereum",
+      "symbol": "ETH",
+      "name": "Ethereum"
+    },
+    {
+      "id": "monero",
+      "symbol": "XMR",
+      "name": "Monero"
+    },
+    {
+      "id": "solana",
+      "symbol": "SOL",
+      "name": "Solana"
+    }
+  ],
+  "stocks": [
+    {
+      "symbol": "AAPL",
+      "name": "AAPL"
+    },
+    {
+      "symbol": "NVDA",
+      "name": "NVDA"
+    },
+    {
+      "symbol": "SPCX",
+      "name": "SPCX"
+    },
+    {
+      "symbol": "SHEL",
+      "name": "SHEL"
+    }
+  ]
+}

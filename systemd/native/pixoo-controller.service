@@ -1,0 +1,23 @@
+[Unit]
+Description=pixoo-local supervisor/controller [NATIVE mode - not used with Docker]
+After=network-online.target mosquitto.service pixoo-heartbeat.service
+Wants=network-online.target
+Requires=mosquitto.service
+
+[Service]
+User=pixoo-local
+Group=pixoo-local
+EnvironmentFile=/etc/pixoo-local/pixoo-local.env
+WorkingDirectory=/opt/pixoo-local
+ExecStart=/opt/pixoo-local/.venv/bin/python -m controller.supervisor
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RuntimeDirectory=pixoo
+ReadWritePaths=/opt/pixoo-local/reports /run/pixoo
+
+[Install]
+WantedBy=multi-user.target

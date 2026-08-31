@@ -1,0 +1,28 @@
+[Unit]
+# Host-side Home Assistant bridge: publishes the "Pixoo Screen" on/off switch to
+# the shared MQTT broker HA uses, so it can be toggled from Apple Home / Alexa /
+# Google via HA. Runs on the host because the macvlan container can't reach the
+# host broker. It only publishes/subscribes — never changes the broker.
+Description=pixoo-local Home Assistant screen switch bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pixoo-local
+Environment=PIXOO_CONFIG=/opt/pixoo-local/config/config.yaml
+Environment=PIXOO_SECRETS_DIR=/etc/pixoo-local
+Environment=PYTHONPATH=/opt/pixoo-local
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/pixoo-local/.hostvenv/bin/python /opt/pixoo-local/scripts/ha_bridge.py
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/pixoo-local
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

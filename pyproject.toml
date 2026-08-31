@@ -1,0 +1,14 @@
+[project]
+name = "pixoo-local"
+version = "1.0.0"
+description = "Fully-local bootstrap + control platform for a Divoom Pixoo 64 (no Divoom cloud)"
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.setuptools]
+packages = ["common", "bootstrap", "mqtt", "controller", "dashboard", "web"]

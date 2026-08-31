@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixoo Screen Editor</title>
+<style>
+  :root{--bg:#11131a;--panel:#1b1e27;--line:#2a2e3a;--fg:#e7e9ee;--dim:#9aa0ad;--blue:#4f7cff;--green:#2ecc71;--red:#e74c3c;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,sans-serif;font-size:14px}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  header h1{font-size:16px;margin:0}
+  .grow{flex:1}
+  button{background:#242835;color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:13px;cursor:pointer}
+  button:hover{border-color:var(--blue)}
+  button.primary{background:var(--blue);border-color:var(--blue)}
+  button.danger{border-color:var(--red)}
+  button.sm{padding:3px 7px;font-size:12px}
+  .wrap{display:grid;grid-template-columns:190px 1fr 300px;gap:12px;padding:12px;align-items:start}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin:0 0 10px}
+  .item{padding:7px 9px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .item.sel{border-color:var(--blue);background:#20263a}
+  .item .grow{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  label{display:block;color:var(--dim);font-size:12px;margin:8px 0 3px}
+  input,select,textarea{width:100%;background:#0e1016;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px;font-size:13px;font-family:inherit}
+  textarea{min-height:64px;font-family:ui-monospace,monospace;font-size:12px}
+  .row{display:flex;gap:6px}
+  .row>div{flex:1}
+  .preview{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .preview img{width:256px;height:256px;image-rendering:pixelated;border:1px solid var(--line);border-radius:8px;background:#000}
+  .muted{color:var(--dim);font-size:12px}
+  #toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#000d;border:1px solid var(--line);padding:8px 14px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none}
+  .hint{font-size:11px;color:var(--dim);margin-top:3px}
+  code{background:#0c0e13;padding:1px 4px;border-radius:4px}
+  dialog{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:0;width:min(680px,94vw);max-height:90vh}
+  dialog::backdrop{background:#000a}
+  .dlgbody{padding:16px;overflow:auto;max-height:74vh}
+  .dayrow{display:grid;grid-template-columns:54px 30px 1fr 1fr;gap:8px;align-items:center;margin-bottom:7px}
+  .dayrow .d{font-weight:600}.dayrow.off input[type=time]{opacity:.35}
+  input[type=time]{background:#0e1016;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px;font-size:13px;width:100%}
+  .qrbox{display:flex;gap:16px;flex-wrap:wrap}
+  .qrcard{background:#0e1016;border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+  .qrcard .qr{background:#fff;padding:8px;border-radius:8px;display:inline-block}
+  .svc{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px}
+  .tabs{display:flex;gap:6px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:center}
+  .tab{background:#242835;border:1px solid var(--line)}
+  .tab.on{background:var(--blue);border-color:var(--blue)}
+  .rowline{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .rowline .grow{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin:16px 0 8px}
+  pre{background:#0c0e13;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:12px;max-height:220px}
+  .ok{color:var(--green)} .no{color:var(--red)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🟦 Pixoo Screen Editor</h1>
+  <label style="margin:0;display:flex;align-items:center;gap:5px;color:var(--fg)">
+    <input type="checkbox" id="rotation" style="width:auto" onchange="cfg.rotation=this.checked;markDirty()"> rotate screens
+  </label>
+  <span class="grow"></span>
+  <label style="margin:0;display:flex;align-items:center;gap:6px;color:var(--fg)" title="LED brightness">
+    ☀<input type="range" id="bright" min="1" max="100" value="30" style="width:120px" oninput="onBright(this.value)">
+    <span id="brightv" class="muted" style="width:34px;text-align:right">–</span>
+  </label>
+  <span id="dirty" class="muted"></span>
+  <button onclick="openSchedule()">⏰ Schedule</button>
+  <button onclick="openSmart()">📱 Smart Home</button>
+  <button onclick="openData()">⚙ Data &amp; Sources</button>
+  <button onclick="reload()">Reload</button>
+  <button class="primary" onclick="save()">Save &amp; Apply</button>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <h2>Screens</h2>
+    <div id="screens"></div>
+    <button class="sm" style="width:100%;margin-top:6px" onclick="addScreen()">+ screen</button>
+  </div>
+
+  <div class="panel">
+    <h2 id="scrHead">Screen</h2>
+    <div class="row">
+      <div><label>Name</label><input id="scrName" oninput="curScreen().name=this.value;markDirty();renderScreens()"></div>
+      <div><label>Duration (s)</label><input id="scrDur" type="number" min="1" oninput="curScreen().duration=+this.value;markDirty()"></div>
+      <div><label>Background</label><input id="scrBg" oninput="curScreen().background=this.value;markDirty();preview()"></div>
+    </div>
+    <h2 style="margin-top:14px">Widgets</h2>
+    <div id="widgets"></div>
+    <div class="row" style="margin-top:6px">
+      <select id="addType"></select>
+      <button class="sm" onclick="addWidget()">+ add</button>
+    </div>
+    <div id="wform"></div>
+  </div>
+
+  <div class="panel preview">
+    <h2 style="align-self:flex-start">Live preview</h2>
+    <img id="prev" alt="preview">
+    <div class="muted">64×64 · updates as you edit</div>
+    <div class="muted" style="margin-top:6px">Editor: <code id="url"></code></div>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <div class="tabs">
+    <strong style="margin-right:6px">Data &amp; Sources</strong>
+    <button class="tab on" id="tabM" onclick="showTab('market')">Market</button>
+    <button class="tab" id="tabC" onclick="showTab('claude')">Claude usage</button>
+    <button class="tab" id="tabL" onclick="showTab('live')">Live data</button>
+    <button class="tab" id="tabU" onclick="showTab('custom')">Custom</button>
+    <span class="grow"></span>
+    <button onclick="dlg.close()">✕</button>
+  </div>
+  <div class="dlgbody">
+    <section id="sec-market">
+      <div class="muted">Your watchlist. Add below, reorder with ▲▼, remove with ✕. Fetched into <code>data/market.json</code> and shown by the <code>market</code> widget (EUR/USD/%).</div>
+      <div class="rowline" style="margin-top:10px">
+        <input id="mkAdd" placeholder="add symbol — BTC, cardano, AAPL, SAP.DE …" onkeydown="if(event.key==='Enter'){event.preventDefault();mkAddEntry()}">
+        <button class="sm" onclick="mkAddEntry()">+ add</button>
+        <button class="sm" onclick="mkTestAdd()">🔍 test</button>
+      </div>
+      <div id="mkAddMsg" class="hint"></div>
+      <h3>Crypto</h3>
+      <div id="mkCrypto"></div>
+      <h3>Stocks</h3>
+      <div id="mkStocks"></div>
+      <div class="hint" style="margin-top:6px">Crypto by symbol (BTC…) or CoinGecko id (cardano); stocks by ticker (AAPL, SAP.DE). Force type with <code>c:</code>/<code>s:</code>.</div>
+      <div style="margin-top:12px"><button class="primary" onclick="saveMarket()">Save watchlist</button>
+        <span id="mkMsg" class="muted"></span></div>
+    </section>
+
+    <section id="sec-claude" hidden>
+      <div class="muted">Fetched <b>server-side</b> from <code>api.anthropic.com/api/oauth/usage</code>. It uses <b>Claude Code's own login</b> (<code>~/.claude/.credentials.json</code>) automatically — that token has the required <code>user:profile</code> scope and stays fresh while you use Claude Code. <b>Read-only</b>: it is never refreshed, rotated, shown, logged, or committed. No manual token needed.</div>
+      <p>Status: <span id="clStatus" class="muted">…</span></p>
+      <div class="hint">Manual fallback (only for a machine <i>without</i> Claude Code): paste an OAuth token that has the <code>user:profile</code> scope. A <code>claude setup-token</code> token does NOT (it 403s).</div>
+      <label>Manual OAuth token (fallback, write-only)</label>
+      <input id="clTok" type="password" placeholder="optional — only if not using Claude Code's login" autocomplete="off">
+      <div style="margin-top:8px">
+        <button class="primary" onclick="saveToken()">Save token</button>
+        <button class="danger" onclick="clearToken()">Clear</button>
+        <span id="clMsg" class="muted"></span>
+      </div>
+      <h3>Live values</h3>
+      <button class="sm" onclick="loadLive('claude','clLive')">refresh</button>
+      <pre id="clLive">—</pre>
+    </section>
+
+    <section id="sec-custom" hidden>
+      <div class="muted">Add your own data from another <b>MQTT topic</b> or a <b>JSON URL</b>. The host bridge writes each into <code>data/&lt;name&gt;.json</code>; then add a <code>kv</code>/<code>list</code>/<code>bar</code> widget with <b>source: file</b> and <b>path</b> <code>/opt/pixoo-local/data/&lt;name&gt;.json</code> (the field picker lists the available fields).</div>
+      <div id="custList" style="margin-top:10px"></div>
+      <h3>Add a source</h3>
+      <div class="rowline"><input id="cuName" placeholder="name (a-z 0-9 _)" style="max-width:150px">
+        <select id="cuType" onchange="cuToggle()"><option value="url">JSON URL</option><option value="mqtt">MQTT topic</option></select></div>
+      <div id="cuUrlRow" class="rowline"><input id="cuUrl" placeholder="https://host/path.json  (or http://LAN-host/api)">
+        <input id="cuEvery" type="number" min="5" value="300" title="seconds" style="max-width:90px"></div>
+      <div id="cuMqttRow" class="rowline" hidden><input id="cuHost" placeholder="broker host" value="10.10.20.50" style="max-width:150px">
+        <input id="cuPort" type="number" value="1883" style="max-width:80px"><input id="cuTopic" placeholder="topic e.g. zigbee2mqtt/sensor"></div>
+      <div class="rowline"><button class="sm" onclick="cuAdd()">+ add</button><span id="cuAddMsg" class="hint"></span></div>
+      <div style="margin-top:12px"><button class="primary" onclick="saveCustom()">Save sources</button> <span id="cuMsg" class="muted"></span></div>
+    </section>
+
+    <section id="sec-live" hidden>
+      <div class="rowline">
+        <select id="livePick" style="max-width:200px">
+          <option value="market">market</option>
+          <option value="xmr">xmr</option>
+          <option value="claude">claude</option>
+        </select>
+        <button class="sm" onclick="loadLive(livePick.value,'liveOut')">refresh</button>
+      </div>
+      <pre id="liveOut">—</pre>
+    </section>
+  </div>
+</dialog>
+
+<dialog id="schedDlg">
+  <div class="tabs"><strong style="margin-right:6px">⏰ Screen Schedule</strong>
+    <label style="display:flex;align-items:center;gap:6px;color:var(--fg)"><input type="checkbox" id="schedEnabled"> enabled</label>
+    <span class="grow"></span><button onclick="schedDlg.close()">✕</button></div>
+  <div class="dlgbody">
+    <div class="muted">Per weekday: tick the day and set on/off (24h). Off drives brightness to 0. A manual on/off overrides until the next scheduled time. Timezone <code id="schedTz">Europe/Berlin</code>. Applies within ~20s.</div>
+    <div class="dayrow" style="color:var(--dim);font-size:11px;margin-top:10px"><span>Day</span><span>On?</span><span>On</span><span>Off</span></div>
+    <div id="schedDays"></div>
+    <div style="margin-top:12px"><button class="primary" onclick="saveSchedule()">Save schedule</button> <span id="schedMsg" class="muted"></span></div>
+  </div>
+</dialog>
+
+<dialog id="smartDlg">
+  <div class="tabs"><strong style="margin-right:6px">📱 Smart Home</strong><span class="grow"></span><button onclick="smartDlg.close()">✕</button></div>
+  <div class="dlgbody">
+    <div class="muted">Turn the screen on/off by voice/app via <b>Home Assistant</b> (bridges to Apple Home, Alexa, Google). Scan to open on your phone:</div>
+    <div class="qrbox" style="margin-top:10px">
+      <div class="qrcard"><div class="qr" id="qrControl"></div><div class="muted" style="margin-top:6px">Control page</div></div>
+      <div class="qrcard"><div class="qr" id="qrHa"></div><div class="muted" style="margin-top:6px">Home Assistant</div></div>
+    </div>
+    <label>Home Assistant URL (for the QR)</label>
+    <input type="text" id="haUrl" placeholder="http://homeassistant.local:8123" oninput="renderHaQr()">
+    <h3>Connect the switch</h3>
+    <div class="svc"><b>Home Assistant</b> — switch <code id="entName">Pixoo Screen</code> (<code id="entId">switch.pixoo_screen</code>) appears automatically via MQTT discovery (Settings → Devices &amp; Services → MQTT).</div>
+    <div class="svc"><b>Apple Home</b> — HA → enable <b>HomeKit Bridge</b>, include the switch, add it in the Apple Home app.</div>
+    <div class="svc"><b>Alexa / Google</b> — expose the switch via HA Cloud (Nabu Casa) or your existing link, then “turn Pixoo Screen off”.</div>
+
+    <h3>Homebridge — one click</h3>
+    <div class="svc">
+      <div>Status: <span id="hbStatus" class="muted">…</span></div>
+      <div style="margin-top:8px">
+        <button class="primary" onclick="hbInstall()">Install &amp; activate in Homebridge</button>
+        <span id="hbMsg" class="muted"></span>
+      </div>
+      <div class="hint" style="margin-top:6px">Installs the <code>homebridge-mqttthing</code> plugin, adds the “Pixoo Screen” switch to your Homebridge <code>config.json</code> and restarts Homebridge. Same thing by hand: <code>sudo /opt/pixoo-local/scripts/setup_homebridge.sh</code></div>
+      <pre id="hbLog" hidden></pre>
+    </div>
+
+    <h4>Manual method (homebridge-mqttthing)</h4>
+    <div class="muted">Install the <code>homebridge-mqttthing</code> plugin in the Homebridge UI, then add this to your <code>config.json</code> <code>accessories</code> array (anonymous broker → no login):</div>
+    <pre id="hbJson">–</pre>
+
+    <div class="hint">MQTT (shared broker <code id="mqttHost">–</code>): command <code id="tCmd">–</code> · state <code id="tState">–</code></div>
+  </div>
+</dialog>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let cfg={rotation:true,screens:[]}, schema={}, sel=0, selW=-1, dirty=false, tmr=null;
+let availSymbols=[];
+let mkt={crypto:[],stocks:[]};
+const dlg=$('dlg');
+function toast(m){const t=$('toast');t.textContent=m;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1700)}
+function markDirty(){dirty=true;$('dirty').textContent='● unsaved';schedulePreview()}
+function curScreen(){return cfg.screens[sel]||{widgets:[]}}
+function curWidget(){return (curScreen().widgets||[])[selW]}
+
+async function reload(){
+  schema=await (await fetch('/api/schema')).json();
+  cfg=await (await fetch('/api/config')).json();
+  if(!cfg.screens)cfg.screens=[];
+  $('rotation').checked=!!cfg.rotation;
+  const at=$('addType');at.innerHTML='';
+  Object.keys(schema.widgets).forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;at.appendChild(o)});
+  sel=0;selW=-1;dirty=false;$('dirty').textContent='';
+  await refreshAvailSymbols();
+  renderAll();loadBrightness();
+}
+async function refreshAvailSymbols(){
+  const set=new Set();
+  try{const d=await (await fetch('/api/data/market')).json();(d.items||[]).forEach(it=>set.add(String(it.symbol).toUpperCase()))}catch(e){}
+  try{const j=await (await fetch('/api/market/lines')).json();(j.lines||'').split('\n').forEach(l=>{l=l.trim();if(l&&!l.startsWith('#'))set.add(l.replace(/^[cs]:/i,'').toUpperCase())})}catch(e){}
+  availSymbols=[...set].sort();
+}
+async function loadBrightness(){
+  try{const j=await (await fetch('/api/brightness')).json();$('bright').value=j.value;$('brightv').textContent=j.value+'%'}catch(e){}
+}
+let brTmr=null;
+function onBright(v){$('brightv').textContent=v+'%';clearTimeout(brTmr);brTmr=setTimeout(()=>postBright(v),200)}
+async function postBright(v){
+  try{const r=await fetch('/api/brightness',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:+v})});
+    const j=await r.json();if(j&&j.warn)toast('Brightness set to '+j.value+'% ('+j.warn+')')}catch(e){}
+}
+function renderAll(){renderScreens();renderScreen();preview()}
+function renderScreens(){
+  const c=$('screens');c.innerHTML='';
+  cfg.screens.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='item'+(i===sel?' sel':'');
+    d.innerHTML=`<span class="grow">${(i+1)}. ${s.name||'screen'}</span>`;
+    const up=btn('▲',e=>{e.stopPropagation();move(i,-1)});
+    const dn=btn('▼',e=>{e.stopPropagation();move(i,1)});
+    const rm=btn('✕',e=>{e.stopPropagation();delScreen(i)});rm.className='sm';rm.style.borderColor='var(--red)';
+    d.append(up,dn,rm);
+    d.onclick=()=>{sel=i;selW=-1;renderAll()};
+    c.appendChild(d);
+  });
+}
+function btn(t,fn){const b=document.createElement('button');b.className='sm';b.textContent=t;b.onclick=fn;return b}
+function move(i,dir){const j=i+dir;if(j<0||j>=cfg.screens.length)return;[cfg.screens[i],cfg.screens[j]]=[cfg.screens[j],cfg.screens[i]];if(sel===i)sel=j;markDirty();renderScreens()}
+function addScreen(){cfg.screens.push({name:'Screen '+(cfg.screens.length+1),duration:8,background:'#000000',widgets:[]});sel=cfg.screens.length-1;selW=-1;markDirty();renderAll()}
+function delScreen(i){cfg.screens.splice(i,1);sel=Math.max(0,sel-(i<=sel?1:0));selW=-1;markDirty();renderAll()}
+
+function renderScreen(){
+  const s=curScreen();
+  $('scrHead').textContent='Screen: '+(s.name||'');
+  $('scrName').value=s.name||'';$('scrDur').value=s.duration||8;$('scrBg').value=s.background||'#000000';
+  const c=$('widgets');c.innerHTML='';
+  (s.widgets||[]).forEach((w,i)=>{
+    const d=document.createElement('div');d.className='item'+(i===selW?' sel':'');
+    d.innerHTML=`<span class="grow">${w.type} <span class="muted">@${w.x||0},${w.y||0} ${w.w||0}×${w.h||0}</span></span>`;
+    const rm=btn('✕',e=>{e.stopPropagation();s.widgets.splice(i,1);selW=-1;markDirty();renderScreen();preview()});rm.style.borderColor='var(--red)';
+    d.append(rm);d.onclick=()=>{selW=i;renderScreen()};c.appendChild(d);
+  });
+  renderForm();
+}
+function addWidget(){const t=$('addType').value;const s=curScreen();if(!s.widgets)s.widgets=[];
+  s.widgets.push({type:t,x:1,y:1,w:62,h:14});selW=s.widgets.length-1;markDirty();renderScreen();preview()}
+
+function tzLabel(tz){const m=(schema.timezones||[]).find(o=>o.tz===tz);return m?m.label:tz}
+function renderForm(){
+  const f=$('wform');f.innerHTML='';const w=curWidget();if(!w){return}
+  const props=(schema.widgets[w.type]||{}).props||[];
+  f.appendChild(el('h2','Widget: '+w.type));
+  const pos=document.createElement('div');pos.className='row';
+  ['x','y','w','h'].forEach(k=>{const box=document.createElement('div');box.innerHTML=`<label>${k}</label>`;
+    const inp=document.createElement('input');inp.type='number';inp.min=0;inp.max=64;inp.value=w[k]??0;
+    inp.oninput=()=>{w[k]=+inp.value;markDirty();preview()};box.appendChild(inp);pos.appendChild(box)});
+  f.appendChild(pos);
+  props.forEach(raw=>{
+    const p=raw.replace('?','');
+    f.appendChild(elLabel(p));
+    // --- special: timezone dropdown by city, auto-fills the label ---
+    if(p==='tz'){
+      const s=document.createElement('select');
+      s.appendChild(opt('','(local)',!w.tz));
+      (schema.timezones||[]).forEach(o=>s.appendChild(opt(o.tz,o.label,w.tz===o.tz)));
+      s.onchange=()=>{
+        if(s.value){w.tz=s.value;if(!w.label)w.label=tzLabel(s.value).toUpperCase();}
+        else delete w.tz;
+        markDirty();renderForm();preview();
+      };
+      f.appendChild(s);return;
+    }
+    // --- special: which market symbols this widget shows (slides / rows) ---
+    if(p==='symbols'){f.appendChild(buildSymbolsEditor(w));return;}
+    // --- special: kv/list fields as an editable list with a path picker ---
+    if(p==='fields'){f.appendChild(buildFieldsEditor(w));return;}
+    let inp;
+    if(p==='format'){const opts=w.type==='date'?schema.date_formats:schema.clock_formats;inp=selectOf(opts,w[p]||opts[0])}
+    else if(p==='source'){inp=selectOf((schema.sources[w.type]||['']),w[p]||'')}
+    else if(p==='view'||p==='currency'){const opts=((schema.prop_options||{})[p]||{})[w.type]||[];inp=selectOf(opts,w[p]||opts[0]||'')}
+    else if(p==='align'){inp=selectOf(['left','center','right'],w[p]||'left')}
+    else if(p==='scale'){inp=numOf(w[p]||1,1,4)}
+    else if(p==='color'||p==='fill'||p==='outline'||p==='titlecolor'){inp=textOf(w[p]||'')}
+    else if(p==='metrics'||p==='symbols'||p==='show'){inp=textOf((Array.isArray(w[p])?w[p]:[]).join(','));
+      inp.placeholder={metrics:'cpu,ram,disk,temp',symbols:'BTC,ETH,AAPL (empty = all)',show:'session,weekly_all (empty = all)'}[p]}
+    else if(p==='fields'||p==='items'){inp=document.createElement('textarea');inp.value=JSON.stringify(w[p]||[],null,1)}
+    else{inp=textOf(w[p]??'')}
+    inp.oninput=()=>{
+      let v=inp.value;
+      if(p==='scale')v=+v;
+      else if(p==='metrics'||p==='symbols'||p==='show')v=v.split(',').map(s=>s.trim()).filter(Boolean);
+      else if(p==='fields'||p==='items'){try{v=JSON.parse(inp.value)}catch(e){return}}
+      if(v===''||v==null||(Array.isArray(v)&&!v.length))delete w[p];else w[p]=v;markDirty();preview();
+    };
+    if(inp.tagName==='SELECT')inp.onchange=inp.oninput;
+    f.appendChild(inp);
+  });
+  f.appendChild(el('div','props: '+props.join(', '),'hint'));
+}
+function el(tag,txt,cls){const e=document.createElement(tag);e.textContent=txt;if(cls)e.className=cls;if(tag==='h2')e.style.marginTop='14px';return e}
+function elLabel(t){const l=document.createElement('label');l.textContent=t;return l}
+function textOf(v){const i=document.createElement('input');i.value=v;return i}
+function numOf(v,mn,mx){const i=document.createElement('input');i.type='number';if(mn!=null)i.min=mn;if(mx!=null)i.max=mx;i.value=v;return i}
+function opt(val,txt,seld){const o=document.createElement('option');o.value=val;o.textContent=txt;if(seld)o.selected=true;return o}
+function selectOf(opts,v){const s=document.createElement('select');(opts||[]).forEach(o=>s.appendChild(opt(o,o||'(none)',o===v)));return s}
+
+// Editor for a market widget's `symbols`: pick which instruments show (rows) or
+// cycle as slides (card). Empty = all. Adding a new one also adds it to the
+// watchlist so it starts being fetched.
+function buildSymbolsEditor(w){
+  const wrap=document.createElement('div');
+  const cur=Array.isArray(w.symbols)?w.symbols.slice():[];
+  cur.forEach((s,i)=>{
+    const row=document.createElement('div');row.className='rowline';
+    const lbl=document.createElement('span');lbl.className='grow';lbl.textContent=s;
+    const up=btn('▲',()=>reorderSym(w,i,-1));
+    const dn=btn('▼',()=>reorderSym(w,i,1));
+    const rm=btn('✕',()=>{cur.splice(i,1);setSyms(w,cur)});rm.style.borderColor='var(--red)';
+    row.append(lbl,up,dn,rm);wrap.appendChild(row);
+  });
+  const addRow=document.createElement('div');addRow.className='rowline';
+  const sel=document.createElement('select');sel.appendChild(opt('','— pick —',true));
+  availSymbols.filter(s=>!cur.includes(s)).forEach(s=>sel.appendChild(opt(s,s)));
+  sel.onchange=()=>{if(sel.value)addSymbol(w,sel.value)};
+  const txt=document.createElement('input');txt.placeholder='or type e.g. AAPL';txt.style.maxWidth='130px';
+  txt.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addSymbol(w,txt.value);txt.value=''}};
+  const st=document.createElement('div');st.className='hint';st.style.marginTop='4px';
+  const add=btn('+ add',()=>{addSymbol(w,txt.value);txt.value=''});
+  const test=btn('🔍 test',()=>testSymbol(txt.value||sel.value,st));
+  addRow.append(sel,txt,add,test);wrap.appendChild(addRow);
+  wrap.appendChild(st);
+  wrap.appendChild(el('div','empty = show all · order = slide / row order · new symbols are added to the watchlist','hint'));
+  return wrap;
+}
+function fmtn(v){return (v==null||v==='')?'-':Number(v).toLocaleString('de-DE')}
+async function testSymbol(sym,statusEl){
+  sym=(sym||'').trim();
+  if(!sym){statusEl.textContent='type a symbol first';return}
+  statusEl.textContent='testing '+sym.toUpperCase()+' …';
+  try{
+    const r=await fetch('/api/market/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:sym})});
+    const j=await r.json();
+    if(j.ok){const it=j.item;const ch=(it.change_pct!=null)?(' · '+Number(it.change_pct).toFixed(1)+'%'):'';
+      statusEl.innerHTML=`<span class="ok">✓ ${it.symbol} (${j.type})</span> · USD ${fmtn(it.price_usd)} · EUR ${fmtn(it.price_eur)}${ch}`;
+    } else {
+      statusEl.innerHTML=`<span class="no">✕ ${sym.toUpperCase()} (${j.type||'?'}) — ${j.error||'failed'}</span>`;
+    }
+  }catch(e){statusEl.textContent='error: '+e}
+}
+function setSyms(w,list){if(!list.length)delete w.symbols;else w.symbols=list;markDirty();renderForm();preview()}
+function reorderSym(w,i,dir){const c=(w.symbols||[]).slice();const j=i+dir;if(j<0||j>=c.length)return;[c[i],c[j]]=[c[j],c[i]];setSyms(w,c)}
+function addSymbol(w,v){
+  v=(v||'').trim().toUpperCase();if(!v)return;
+  const c=Array.isArray(w.symbols)?w.symbols.slice():[];
+  if(c.includes(v)){setSyms(w,c);return}
+  c.push(v);
+  if(!availSymbols.includes(v)){availSymbols.push(v);availSymbols.sort();appendToWatchlist(v)}
+  setSyms(w,c);
+}
+// Editor for a kv/list widget's `fields`: each row is a label + JSON path, with
+// reorder/remove and a picker of the paths actually present in the widget's data.
+function buildFieldsEditor(w){
+  const wrap=document.createElement('div');
+  const arr=Array.isArray(w.fields)?w.fields:(w.fields=[]);
+  arr.forEach((fld,i)=>{
+    const row=document.createElement('div');row.className='rowline';
+    const lab=document.createElement('input');lab.value=fld.label||'';lab.placeholder='LABEL';lab.style.maxWidth='90px';
+    lab.oninput=()=>{fld.label=lab.value;markDirty();preview()};
+    const pth=document.createElement('input');pth.value=fld.path||'';pth.placeholder='path';
+    pth.oninput=()=>{fld.path=pth.value;markDirty();preview()};
+    const up=btn('▲',()=>fMove(w,i,-1));
+    const dn=btn('▼',()=>fMove(w,i,1));
+    const rm=btn('✕',()=>{arr.splice(i,1);markDirty();renderForm();preview()});rm.style.borderColor='var(--red)';
+    row.append(lab,pth,up,dn,rm);wrap.appendChild(row);
+  });
+  const addRow=document.createElement('div');addRow.className='rowline';
+  const sel=document.createElement('select');sel.appendChild(opt('','— pick field —',true));
+  const add=btn('+ add',()=>{const pth=sel.value;if(!pth)return;
+    arr.push({label:(pth.split('.').pop()||pth).toUpperCase().slice(0,8),path:pth});markDirty();renderForm();preview()});
+  addRow.append(sel,add);wrap.appendChild(addRow);
+  wrap.appendChild(el('div','pick a field from the data, or edit label/path directly','hint'));
+  loadKvPaths(w).then(paths=>paths.forEach(pp=>
+    sel.appendChild(opt(pp.path, `${pp.path}  (${String(pp.sample).slice(0,14)})`))));
+  return wrap;
+}
+function fMove(w,i,dir){const a=w.fields;const j=i+dir;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];markDirty();renderForm();preview()}
+async function loadKvPaths(w){
+  try{const r=await fetch('/api/kv/paths',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source:w.source||'file',path:w.path||'',url:w.url||''})});
+    return (await r.json()).paths||[]}catch(e){return[]}
+}
+async function appendToWatchlist(sym){
+  try{
+    const j=await (await fetch('/api/market/lines')).json();
+    const lines=(j.lines||'').split('\n').map(x=>x.trim()).filter(Boolean);
+    if(!lines.map(x=>x.toUpperCase().replace(/^[CS]:/,'')).includes(sym)){
+      lines.push(sym);
+      await fetch('/api/market/lines',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lines:lines.join('\n')})});
+      toast(sym+' added to watchlist (fetching…)');
+    }
+  }catch(e){}
+}
+
+function schedulePreview(){clearTimeout(tmr);tmr=setTimeout(preview,250)}
+async function preview(){
+  try{
+    const r=await fetch('/api/preview.png?scale=4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(curScreen())});
+    if(r.ok){const b=await r.blob();$('prev').src=URL.createObjectURL(b)}
+  }catch(e){}
+}
+async function save(){
+  try{
+    const r=await fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+    const j=await r.json();
+    if(j.ok){dirty=false;$('dirty').textContent='saved ✓';toast('Saved — Pixoo updating')}
+    else toast('Error: '+j.error);
+  }catch(e){toast('Error: '+e)}
+}
+
+/* ---------- Data & Sources dialog ---------- */
+function openData(){dlg.showModal();showTab('market');loadMarket();loadClaudeStatus()}
+const TABIDS={market:'tabM',claude:'tabC',live:'tabL',custom:'tabU'};
+function showTab(t){
+  for(const k of ['market','claude','live','custom']){$('sec-'+k).hidden=(k!==t);
+    $(TABIDS[k]).classList.toggle('on',k===t)}
+  if(t==='custom')loadCustom();
+}
+async function loadMarket(){
+  try{mkt=await (await fetch('/api/market')).json()}catch(e){mkt={crypto:[],stocks:[]}}
+  mkt.crypto=mkt.crypto||[];mkt.stocks=mkt.stocks||[];
+  $('mkMsg').textContent='';$('mkAddMsg').textContent='';renderMarket();
+}
+function renderMarket(){renderMkList('mkCrypto',mkt.crypto,'crypto');renderMkList('mkStocks',mkt.stocks,'stock')}
+function renderMkList(elId,arr,type){
+  const c=$(elId);c.innerHTML='';
+  if(!arr.length){c.innerHTML='<div class="hint">none yet</div>';return}
+  arr.forEach((x,i)=>{
+    const row=document.createElement('div');row.className='rowline';
+    const s=document.createElement('span');s.className='grow';
+    s.textContent=type==='crypto'?`${x.symbol||x.id} · ${x.name||''}  (${x.id})`:`${x.symbol} · ${x.name||''}`;
+    const up=btn('▲',()=>mkMove(arr,i,-1));
+    const dn=btn('▼',()=>mkMove(arr,i,1));
+    const rm=btn('✕',()=>{arr.splice(i,1);renderMarket()});rm.style.borderColor='var(--red)';
+    row.append(s,up,dn,rm);c.appendChild(row);
+  });
+}
+function mkMove(arr,i,dir){const j=i+dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];renderMarket()}
+async function mkAddEntry(){
+  const v=$('mkAdd').value.trim();if(!v)return;
+  $('mkAddMsg').textContent='resolving '+v+' …';
+  try{
+    const j=await (await fetch('/api/market/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:v})})).json();
+    if(!j.ok){$('mkAddMsg').innerHTML='<span class="no">'+(j.error||'could not resolve')+'</span>';return}
+    const arr=j.type==='crypto'?mkt.crypto:mkt.stocks;
+    const key=(j.entry.symbol||j.entry.id||'').toUpperCase();
+    if(arr.some(e=>String(e.symbol||e.id).toUpperCase()===key)){$('mkAddMsg').textContent=key+' already in list';}
+    else{arr.push(j.entry);$('mkAddMsg').innerHTML='added as <b>'+j.type+'</b> — remember to Save';}
+    $('mkAdd').value='';renderMarket();
+  }catch(e){$('mkAddMsg').textContent='error: '+e}
+}
+function mkTestAdd(){const v=$('mkAdd').value.trim();if(!v){$('mkAddMsg').textContent='type a symbol first';return}testSymbol(v,$('mkAddMsg'))}
+async function saveMarket(){
+  $('mkMsg').textContent='saving…';
+  try{
+    const r=await fetch('/api/market',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(mkt)});
+    const j=await r.json();
+    if(j.ok){$('mkMsg').textContent=`saved ✓ ${mkt.crypto.length} crypto + ${mkt.stocks.length} stocks · updates within ~90s`;await refreshAvailSymbols();}
+    else $('mkMsg').textContent='error: '+j.error;
+  }catch(e){$('mkMsg').textContent='error: '+e}
+}
+async function loadClaudeStatus(){
+  try{const j=await (await fetch('/api/claude/status')).json();
+    if(j.active)$('clStatus').innerHTML=`<span class="ok">✓ working</span> (${j.source}) · ${j.limits} limits${j.updated?' · '+j.updated:''}`;
+    else if(j.configured)$('clStatus').innerHTML=`<span style="color:var(--blue)">configured</span> — waiting${j.error?(': '+j.error):''}`;
+    else $('clStatus').innerHTML='<span class="no">not configured</span>';}
+  catch(e){$('clStatus').textContent='?'}
+}
+async function saveToken(){
+  const t=$('clTok').value.trim();if(!t){$('clMsg').textContent='enter a token first';return}
+  try{const r=await fetch('/api/claude/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t})});
+    const j=await r.json();$('clTok').value='';$('clMsg').textContent=j.ok?'saved ✓':('error: '+j.error);loadClaudeStatus()}
+  catch(e){$('clMsg').textContent='error: '+e}
+}
+async function clearToken(){
+  try{await fetch('/api/claude/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:''})});
+    $('clTok').value='';$('clMsg').textContent='cleared';loadClaudeStatus()}catch(e){}
+}
+async function loadLive(name,into){
+  try{const r=await fetch('/api/data/'+name);const t=await r.text();
+    try{$(into).textContent=JSON.stringify(JSON.parse(t),null,2)}catch(e){$(into).textContent=t}}
+  catch(e){$(into).textContent='no data'}
+}
+
+/* ---------- schedule + smart-home ---------- */
+const schedDlg=$('schedDlg'), smartDlg=$('smartDlg');
+const DAYS=[['mon','MON'],['tue','TUE'],['wed','WED'],['thu','THU'],['fri','FRI'],['sat','SAT'],['sun','SUN']];
+function openSchedule(){schedDlg.showModal();loadSchedule()}
+async function loadSchedule(){
+  let data={enabled:false,timezone:'Europe/Berlin',days:{}};
+  try{data=await (await fetch('/api/schedule')).json()}catch(e){}
+  $('schedEnabled').checked=!!data.enabled;$('schedTz').textContent=data.timezone||'Europe/Berlin';
+  const c=$('schedDays');c.innerHTML='';$('schedMsg').textContent='';
+  DAYS.forEach(([k,lbl])=>{
+    const dc=(data.days||{})[k]||{},active=!!(dc.on||dc.off);
+    const row=document.createElement('div');row.className='dayrow'+(active?'':' off');
+    const d=document.createElement('span');d.className='d';d.textContent=lbl;
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=active;cb.dataset.k=k;
+    const on=document.createElement('input');on.type='time';on.value=dc.on||'07:00';on.dataset.f='on';
+    const off=document.createElement('input');off.type='time';off.value=dc.off||'23:00';off.dataset.f='off';
+    on.disabled=off.disabled=!active;
+    cb.onchange=()=>{row.classList.toggle('off',!cb.checked);on.disabled=off.disabled=!cb.checked};
+    row.append(d,cb,on,off);c.appendChild(row);
+  });
+}
+async function saveSchedule(){
+  const days={};
+  $('schedDays').querySelectorAll('.dayrow').forEach(row=>{
+    const cb=row.querySelector('input[type=checkbox]');
+    if(cb&&cb.checked)days[cb.dataset.k]={on:row.querySelector('input[data-f=on]').value,off:row.querySelector('input[data-f=off]').value};
+  });
+  const body={enabled:$('schedEnabled').checked,timezone:$('schedTz').textContent,days};
+  try{const r=await fetch('/api/schedule',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();$('schedMsg').textContent=j.ok?'saved ✓ (applies within ~20s)':('error: '+(j.error||''))}
+  catch(e){$('schedMsg').textContent='error: '+e}
+}
+function qr(el,text){el.innerHTML='';if(!text)return;
+  try{new QRCode(el,{text:text,width:150,height:150,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}catch(e){el.textContent='QR n/a'}}
+let SMART={};
+function openSmart(){smartDlg.showModal();loadSmart()}
+async function loadSmart(){
+  try{SMART=await (await fetch('/api/smarthome')).json()}catch(e){SMART={}}
+  qr($('qrControl'),SMART.control_url||'');
+  $('entName').textContent=SMART.entity_name||'Pixoo Screen';$('entId').textContent=SMART.entity_id||'switch.pixoo_screen';
+  const m=SMART.mqtt||{};$('mqttHost').textContent=(m.host||'?')+':'+(m.port||1883);
+  const t=SMART.topics||{};$('tCmd').textContent=t.command||'–';$('tState').textContent=t.state||'–';
+  let saved='';try{saved=localStorage.getItem('pixoo_ha_url')||''}catch(e){}
+  $('haUrl').value=saved;renderHaQr();
+  // manual homebridge JSON + status
+  const avail=(t.command||'').replace('/screen/set','/availability');
+  const block={accessory:'mqttthing',type:'switch',name:SMART.entity_name||'Pixoo Screen',
+    url:'mqtt://'+((m.host||'10.10.20.50'))+':'+((m.port||1883)),
+    topics:{getOn:t.state,setOn:t.command,getOnline:avail},
+    onValue:'ON',offValue:'OFF',onlineValue:'online',offlineValue:'offline'};
+  $('hbJson').textContent=JSON.stringify(block,null,2);
+  loadHbStatus();
+}
+async function loadHbStatus(){
+  try{const s=await (await fetch('/api/homebridge/status')).json();
+    if(!s.available){$('hbStatus').innerHTML='<span class="no">Homebridge not found on this host</span>';return}
+    const ok=x=>x?'<span class="ok">yes</span>':'<span class="no">no</span>';
+    $('hbStatus').innerHTML=`plugin ${ok(s.plugin)} · switch configured ${ok(s.configured)} · running ${s.running==null?'?':ok(s.running)}`;
+  }catch(e){$('hbStatus').textContent='?'}
+}
+async function hbInstall(){
+  $('hbMsg').textContent='installing… (up to a minute)';$('hbLog').hidden=true;
+  try{const r=await fetch('/api/homebridge/install',{method:'POST'});const j=await r.json();
+    $('hbMsg').innerHTML=j.ok?'<span class="ok">done ✓ — appears in Apple Home shortly</span>':('<span class="no">failed: '+(j.error||'see log')+'</span>');
+    if(j.log){$('hbLog').hidden=false;$('hbLog').textContent=j.log}
+    loadHbStatus();
+  }catch(e){$('hbMsg').textContent='error: '+e}
+}
+function renderHaQr(){const u=$('haUrl').value.trim();try{localStorage.setItem('pixoo_ha_url',u)}catch(e){}qr($('qrHa'),u)}
+
+/* ---------- custom data sources ---------- */
+let CUST=[];
+function cuToggle(){const t=$('cuType').value;$('cuUrlRow').hidden=t!=='url';$('cuMqttRow').hidden=t!=='mqtt'}
+async function loadCustom(){
+  try{CUST=await (await fetch('/api/custom_sources')).json()}catch(e){CUST=[]}
+  if(!Array.isArray(CUST))CUST=[];$('cuMsg').textContent='';renderCustom();cuToggle();
+}
+function renderCustom(){
+  const c=$('custList');c.innerHTML='';
+  if(!CUST.length){c.innerHTML='<div class="hint">none yet</div>';return}
+  CUST.forEach((s,i)=>{
+    const row=document.createElement('div');row.className='rowline';
+    const span=document.createElement('span');span.className='grow';
+    span.textContent=s.type==='mqtt'?`${s.name} · MQTT ${s.mqtt_host}:${s.mqtt_port} ${s.topic}`:`${s.name} · URL ${s.url}`;
+    const rm=btn('✕',()=>{CUST.splice(i,1);renderCustom()});rm.style.borderColor='var(--red)';
+    row.append(span,rm);c.appendChild(row);
+  });
+}
+function cuAdd(){
+  const name=$('cuName').value.trim().toLowerCase();
+  if(!/^[a-z0-9_]{1,32}$/.test(name)){$('cuAddMsg').textContent='name must be a-z 0-9 _';return}
+  if(CUST.some(s=>s.name===name)){$('cuAddMsg').textContent='name already used';return}
+  if($('cuType').value==='url'){const url=$('cuUrl').value.trim();if(!url){$('cuAddMsg').textContent='enter a URL';return}
+    CUST.push({name,type:'url',url,every:+$('cuEvery').value||300});}
+  else{const topic=$('cuTopic').value.trim();if(!topic){$('cuAddMsg').textContent='enter a topic';return}
+    CUST.push({name,type:'mqtt',mqtt_host:$('cuHost').value.trim()||'10.10.20.50',mqtt_port:+$('cuPort').value||1883,topic});}
+  $('cuName').value=$('cuUrl').value=$('cuTopic').value='';$('cuAddMsg').textContent='';renderCustom();
+}
+async function saveCustom(){
+  $('cuMsg').textContent='saving…';
+  try{const r=await fetch('/api/custom_sources',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(CUST)});
+    const j=await r.json();$('cuMsg').textContent=j.ok?`saved ✓ ${j.count} source(s) · data appears within ~15s`:('error: '+(j.error||''));
+    if(j.ok)await refreshAvailSymbols();}
+  catch(e){$('cuMsg').textContent='error: '+e}
+}
+
+$('url').textContent=location.host;
+reload();
+</script>
+</body>
+</html>

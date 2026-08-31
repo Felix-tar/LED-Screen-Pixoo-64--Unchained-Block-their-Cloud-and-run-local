@@ -1,0 +1,36 @@
+[Unit]
+# Host-side copy of the screen editor, reachable at http://10.10.20.50:8091.
+# The main stack runs in the macvlan container on 10.10.20.160 (which the host
+# itself cannot reach). This unit exposes ONLY the editor on the host IP so the
+# editor is reachable from the Pi too. It does NOT control the device (no
+# supervisor) — it only reads/writes /opt/pixoo-local/config/screens.json, which
+# is bind-mounted into the container, so edits apply live. Port 8091 is free on
+# the host (8090 is taken by filebrowser — that is why the stack uses macvlan).
+Description=pixoo-local screen editor (host-side, port 8091)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pixoo-local
+Environment=PIXOO_CONFIG=/opt/pixoo-local/config/config.yaml
+Environment=PIXOO_SECRETS_DIR=/etc/pixoo-local
+Environment=PYTHONPATH=/opt/pixoo-local
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/pixoo-local/.hostvenv/bin/python -m web.editor
+Restart=on-failure
+RestartSec=3
+
+# hardening — read-only except the project dir + Homebridge storage (the "Install
+# & activate in Homebridge" button edits config.json there and restarts the unit).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/pixoo-local /var/lib/homebridge
+Environment=HOME=/opt/pixoo-local
+Environment=npm_config_cache=/opt/pixoo-local/.npmcache
+PrivateTmp=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

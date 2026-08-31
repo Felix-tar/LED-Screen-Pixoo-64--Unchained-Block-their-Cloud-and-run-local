@@ -1,0 +1,9 @@
+# Pinned runtime dependencies for pixoo-local (installed inside the container venv).
+# Versions chosen for Python 3.11 / arm64 (Raspberry Pi 4, Debian bookworm).
+PyYAML==6.0.2
+requests==2.32.3
+Pillow==10.4.0
+paho-mqtt==2.1.0
+psutil==6.0.0
+Flask==3.0.3
+Werkzeug==3.0.4

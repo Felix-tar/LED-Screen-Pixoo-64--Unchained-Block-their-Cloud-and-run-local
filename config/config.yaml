@@ -1,0 +1,208 @@
+# =====================================================================
+# EXAMPLE CONFIG — the device_id / user_id / pixoo_mac / IPs below are
+# PLACEHOLDERS. Fill in your own: run scripts/discover_device.sh to read
+# your Pixoo's real DeviceId/UserId, set network.* to your LAN, and add the
+# app.divoom-gz.com DNS record (see INSTALL.md). Secrets never go in here.
+# =====================================================================
+# =====================================================================
+# pixoo-local main configuration
+# =====================================================================
+# Deployment model on THIS host (raspberrypi / 10.10.20.50):
+#   The whole Pixoo stack runs in ONE Docker macvlan container on a
+#   dedicated LAN IP (advertise_ip). Pi-hole, the shared Mosquitto and
+#   eth0 are NOT touched. app.divoom-gz.com resolves to advertise_ip
+#   (record added on the DNS server 10.10.20.231).
+# All secrets live in separate chmod-600 files, never in this file.
+# =====================================================================
+
+network:
+  pixoo_ip: "10.10.20.161"        # the Pixoo 64 (local HTTP API host)
+  pixoo_mac: "a1b2c3d4e5f6"       # normalized MAC (no separators, lowercase)
+  gateway_ip: "10.10.20.254"      # Omada gateway
+  dns_ip: "10.10.20.231"          # DNS server the Pixoo actually uses (override goes here)
+  # Dedicated LAN IP the Pixoo reaches for BOTH bootstrap (HTTP/80) and MQTT (1883).
+  # This is the macvlan container's IP. Inside the container services bind 0.0.0.0,
+  # which maps to this address on the LAN.
+  advertise_ip: "10.10.20.160"
+
+bootstrap:
+  listen_host: "0.0.0.0"          # binds container IP:80 (macvlan namespace)
+  listen_port: 80
+  # Device identity — MUST match what the real Divoom server returns for THIS
+  # device, else the firmware re-runs InitV2 + reconnects MQTT every ~28s.
+  # Captured from the real app.divoom-gz.com InitV2 reply (2026-07-11).
+  device_id: 300000000            # real assigned DeviceId (was placeholder 300000064)
+  user_id: 400000000             # real bound UserId (0/absent => device thinks unbound)
+  timezone: "Europe/Berlin"
+  timezone_code: "CET-1CEST,M3.5.0,M10.5.0/3"
+  summer_zone: 0                  # real server returns 0
+  last_clock_id: 1033             # device's last clock face
+  screen_on_off: 1
+  custom_type: 0
+  backup_ip: ""                   # empty => advertise_ip
+  lot: 9.21                       # rough geo (real server echoed these)
+  lat: 48.65
+  # Public IP returned to the firmware connectivity checks (InitV2 DevicePublicIP
+  # + /Test/GetIP CustonIP). MUST look public or the device re-inits in a loop.
+  # With public_ip_auto the bootstrap fetches the CONTAINER's own WAN IP (same
+  # ISP path the Pixoo uses — NOT the host, which here runs via NordVPN) and keeps
+  # it current across nightly ISP re-connects. This value is only the fallback.
+  public_ip: "203.0.113.10"
+  public_ip_auto: true
+  public_ip_url: "https://api.ipify.org"
+  public_ip_refresh_seconds: 300
+  # Hosts we will serve real bootstrap credentials for. Requests with any other
+  # Host header get 404 and NO secrets.
+  allowed_hosts:
+    - "app.divoom-gz.com"
+  # Also answer when Host == advertise_ip (handy for local curl tests). Never
+  # answers for unknown hosts.
+  allow_direct_ip_host: true
+
+mqtt:
+  # Where the in-container services (heartbeat/controller) connect:
+  connect_host: "127.0.0.1"
+  # Where mosquitto listens inside the container (0.0.0.0 -> container LAN IP + lo):
+  bind_host: "0.0.0.0"
+  port: 1883
+  device_username: "a1b2c3d4e5f6"           # Pixoo login = its MAC
+  device_token_file: "device-token"         # resolved against PIXOO_SECRETS_DIR
+  server_username: "pixoo-server"
+  server_password_file: "server-mqtt-password"
+  device_id: 300000000
+  topic_prefix: "divoom/2/300000000"
+  qos: 1
+  # The firmware subscribes to the GLOBAL topic divoom/2/DeviceHeart and stays
+  # "connected" (keeps its local API/port 80 open) only while it keeps receiving
+  # messages there. We publish {"Command":"Device/Hearbeat"} at this interval.
+  server_heartbeat_seconds: 3
+  # Fields the real server returns in the Device/Connect MQTT reply. LocalToken
+  # (a number) is what the firmware needs to treat itself as provisioned.
+  local_token: 100000
+  software_version: 92079
+
+http_api:
+  # Derived from network.pixoo_ip when empty. Explicit here for clarity.
+  base_url: "http://10.10.20.161/post"
+  connect_timeout: 2.0
+  read_timeout: 5.0
+  max_retries: 3
+  backoff_factor: 0.5
+  ready_timeout_seconds: 120
+
+display:
+  width: 64
+  height: 64
+  default_brightness: 67
+  # Home timezone for any clock/date widget WITHOUT an explicit tz. The IANA
+  # tz database switches German (and every country's) winter<->summer time
+  # automatically and offline — no time API needed for DST.
+  timezone: "Europe/Berlin"
+  # Safety net only: if the host clock has drifted more than this many seconds
+  # from authoritative internet time (i.e. NTP failed), apply the data-bridge's
+  # measured offset. 0 disables. Normal NTP drift is ~0 so nothing is applied.
+  time_correction_threshold_seconds: 30
+  # A LOCAL built-in clock face. On connect the supervisor forces the device off
+  # any cloud face (e.g. the crypto/mining face 1033) onto this one, so the
+  # firmware never hangs loading cloud data with no internet. 26 verified local.
+  safe_clock_id: 12              # a LOCAL face (verified 20/20 no-hang) for the brief
+                                 # boot before our own screens take over
+  cloud_clock_ids: [1033]          # faces known to require the cloud (force off these)
+  transport: "auto"               # auto | http | mqtt
+  maximum_frame_rate: 1.0         # max full frames/second actually sent
+  system_update_seconds: 5
+  page_rotation_seconds: 10
+  # After a (re)start or any device drop, poll the device every 1s for this long
+  # so it reconnects ASAP after a power cut (also keeps the macvlan ARP warm).
+  fast_recover_seconds: 180
+
+web:
+  listen_host: "0.0.0.0"
+  listen_port: 8090               # inside container namespace; reach at advertise_ip:8090
+  authentication_enabled: true
+  auth_username: "pixoo"
+  auth_password_file: "web-auth-password"    # resolved against PIXOO_SECRETS_DIR
+
+# Browser screen editor (own port). Reach at advertise_ip:8091.
+editor:
+  listen_host: "0.0.0.0"
+  listen_port: 8091
+
+# Screen on/off timer, per weekday. Times are "HH:MM" (24h) in `timezone`; omit a
+# day or its on/off to skip that edge. A manual on/off (web UI or Apple/Alexa/
+# Google) overrides until the next scheduled edge.
+schedule:
+  enabled: true
+  timezone: "Europe/Berlin"
+  days:
+    mon: { on: "07:00", off: "23:00" }
+    tue: { on: "07:00", off: "23:00" }
+    wed: { on: "07:00", off: "23:00" }
+    thu: { on: "07:00", off: "23:00" }
+    fri: { on: "07:00", off: "23:59" }
+    sat: { on: "09:00", off: "23:59" }
+    sun: { on: "09:00", off: "23:00" }
+
+# Home Assistant MQTT switch (host-side pixoo-ha-bridge.service) so the screen can
+# be toggled from Apple Home / Alexa / Google via HA. It publishes/subscribes on
+# the SHARED broker HA already uses (10.10.20.50:1883) — it NEVER changes the
+# broker config. A switch "Pixoo Screen" auto-appears in HA via MQTT discovery.
+homeassistant:
+  enabled: true
+  mqtt_host: "10.10.20.50"
+  mqtt_port: 1883
+  discovery_prefix: "homeassistant"
+  node_id: "pixoo64"
+  device_name: "Pixoo Screen"
+
+capture_proxy:
+  enabled: false                  # one-time diagnostic fallback ONLY (section 11)
+  upstream_resolver: "1.1.1.1"    # resolve the REAL app.divoom-gz.com before DNS override
+  save_dir: "/opt/pixoo-local/reports/bootstrap-capture"
+
+dashboard:
+  enabled: true
+  market:
+    enabled: true
+    provider: "demo"              # demo | plugin (see dashboard/market.py)
+    update_seconds: 300
+    symbols:
+      - { label: "DAX",  value: "+0.4%" }
+      - { label: "BTC",  value: "-1.2%" }
+      - { label: "NVDA", value: "+2.1%" }
+
+# Host-side data bridge: the macvlan container can't reach the host (10.10.20.50)
+# and the Pixoo itself stays WAN-isolated, so ONLY this host loop fetches data and
+# writes /opt/pixoo-local/data/<name>.json, which widgets read with source:"file".
+# Each source may set its own `every` (seconds); default is interval_seconds.
+data_bridge:
+  interval_seconds: 15
+  sources:
+    - { name: "xmr",    type: "url",          url: "http://10.10.20.50:8420/api/state", every: 10, sticky: true, derive: "monero" }
+    - { name: "market", type: "market",       every: 90 }   # crypto+stocks, EUR/USD/%
+    # Claude: the oauth/usage endpoint is strictly rate-limited (long Retry-After
+    # windows, and any call while limited RESETS the window). The fetcher honors
+    # Retry-After exactly, so we poll gently and never self-ban. Updates arrive as
+    # fast as the endpoint allows.
+    - { name: "claude", type: "claude_usage", every: 300 }
+    - { name: "time",   type: "time",         every: 600 }  # verify clock vs internet time
+  # Market: watchlist edited in the browser (Data & Sources); crypto=CoinGecko
+  # (no key, gives EUR+USD+24h%), stocks=Yahoo chart endpoint + FX to EUR/USD.
+  market:
+    watchlist_file: "/opt/pixoo-local/config/market.json"
+    yahoo_user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+  # Claude usage: GET https://api.anthropic.com/api/oauth/usage server-side. The
+  # OAuth token lives ONLY in a chmod-600 secret file (or an editor-written 0600
+  # fallback under data/) — never in this file, the output JSON, git, or logs.
+  claude:
+    url: "https://api.anthropic.com/api/oauth/usage"
+    # PREFERRED token source: Claude Code's own OAuth login, which carries the
+    # required `user:profile` scope (a `claude setup-token` token does NOT, so it
+    # 403s). Read-only: we use the accessToken but NEVER refresh/rotate it, so the
+    # Claude Code login is untouched. It stays fresh while you use Claude Code.
+    credentials_file: "/home/felix/.claude/.credentials.json"
+    token_secret: "claude-oauth-token"                       # fallback: /etc/pixoo-local/claude-oauth-token
+    token_file_fallback: "/opt/pixoo-local/data/.claude-oauth-token"
+
+logging:
+  level: "INFO"

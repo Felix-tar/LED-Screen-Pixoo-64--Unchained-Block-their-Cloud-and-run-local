@@ -1,0 +1,302 @@
+{
+  "rotation": true,
+  "screens": [
+    {
+      "background": "#000000",
+      "duration": 10,
+      "name": "Home Server",
+      "widgets": [
+        {
+          "color": "#f0f0f0",
+          "h": 6,
+          "text": "Home Srv",
+          "type": "text",
+          "w": 62,
+          "x": 1,
+          "y": 0
+        },
+        {
+          "h": 6,
+          "label": "T",
+          "source": "temp",
+          "type": "metric",
+          "w": 23,
+          "x": 40,
+          "y": 0
+        },
+        {
+          "h": 21,
+          "metrics": [
+            "cpu",
+            "ram",
+            "disk"
+          ],
+          "type": "sysbars",
+          "w": 62,
+          "x": 1,
+          "y": 8
+        },
+        {
+          "h": 1,
+          "type": "line",
+          "w": 64,
+          "x": 0,
+          "y": 31
+        },
+        {
+          "format": "HH:MM",
+          "h": 20,
+          "scale": 3,
+          "type": "clock",
+          "w": 64,
+          "x": 0,
+          "y": 35
+        },
+        {
+          "format": "WD DD.MM",
+          "h": 6,
+          "type": "date",
+          "w": 64,
+          "x": 0,
+          "y": 57
+        }
+      ]
+    },
+    {
+      "background": "#000000",
+      "duration": 8,
+      "name": "Clocks",
+      "widgets": [
+        {
+          "format": "HH:MM",
+          "h": 22,
+          "label": "BERLIN",
+          "scale": 3,
+          "type": "clock",
+          "tz": "Europe/Berlin",
+          "w": 64,
+          "x": 0,
+          "y": 1
+        },
+        {
+          "h": 1,
+          "type": "line",
+          "w": 64,
+          "x": 0,
+          "y": 30
+        },
+        {
+          "format": "HH:MM",
+          "h": 14,
+          "label": "NYC",
+          "scale": 1,
+          "type": "clock",
+          "tz": "America/New_York",
+          "w": 32,
+          "x": 0,
+          "y": 34
+        },
+        {
+          "format": "HH:MM",
+          "h": 14,
+          "label": "TOKYO",
+          "scale": 1,
+          "type": "clock",
+          "tz": "Asia/Tokyo",
+          "w": 32,
+          "x": 32,
+          "y": 34
+        },
+        {
+          "format": "HH:MM",
+          "h": 14,
+          "label": "Boise",
+          "scale": 1,
+          "type": "clock",
+          "tz": "America/Boise",
+          "w": 32,
+          "x": 0,
+          "y": 50
+        },
+        {
+          "format": "HH:MM",
+          "h": 14,
+          "label": "UTC",
+          "scale": 1,
+          "type": "clock",
+          "tz": "UTC",
+          "w": 32,
+          "x": 32,
+          "y": 50
+        }
+      ]
+    },
+    {
+      "background": "#000000",
+      "duration": 12,
+      "name": "Market",
+      "widgets": [
+        {
+          "color": "#4f7cff",
+          "h": 6,
+          "text": "MARKET",
+          "type": "text",
+          "w": 38,
+          "x": 1,
+          "y": 0
+        },
+        {
+          "format": "HH:MM",
+          "h": 6,
+          "scale": 1,
+          "type": "clock",
+          "w": 22,
+          "x": 40,
+          "y": 0
+        },
+        {
+          "h": 1,
+          "type": "line",
+          "w": 64,
+          "x": 0,
+          "y": 8
+        },
+        {
+          "h": 52,
+          "rotate_seconds": 4,
+          "type": "market",
+          "view": "card",
+          "w": 62,
+          "x": 1,
+          "y": 11
+        }
+      ]
+    },
+    {
+      "background": "#000000",
+      "duration": 8,
+      "name": "Watchlist",
+      "widgets": [
+        {
+          "h": 6,
+          "text": "WATCHLIST",
+          "type": "text",
+          "w": 38,
+          "x": 1,
+          "y": 0
+        },
+        {
+          "format": "HH:MM",
+          "h": 6,
+          "scale": 1,
+          "type": "clock",
+          "w": 22,
+          "x": 40,
+          "y": 0
+        },
+        {
+          "h": 1,
+          "type": "line",
+          "w": 64,
+          "x": 0,
+          "y": 8
+        },
+        {
+          "currency": "usd",
+          "h": 54,
+          "rotate_seconds": 5,
+          "type": "market",
+          "view": "rows",
+          "w": 62,
+          "x": 1,
+          "y": 10
+        }
+      ]
+    },
+    {
+      "background": "#000000",
+      "duration": 10,
+      "name": "Claude",
+      "widgets": [
+        {
+          "h": 64,
+          "title": "CLAUDE USAGE",
+          "type": "claude",
+          "view": "bars",
+          "w": 62,
+          "x": 1,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "background": "#000000",
+      "duration": 8,
+      "name": "XMR",
+      "widgets": [
+        {
+          "color": "#f28c1e",
+          "h": 6,
+          "text": "XMR NODE",
+          "type": "text",
+          "w": 62,
+          "x": 1,
+          "y": 0
+        },
+        {
+          "h": 1,
+          "type": "line",
+          "w": 64,
+          "x": 0,
+          "y": 8
+        },
+        {
+          "fields": [
+            {
+              "default": "?",
+              "label": "STATE",
+              "path": "availability"
+            },
+            {
+              "default": "-",
+              "label": "HASH",
+              "path": "hashrate_human"
+            },
+            {
+              "default": "-",
+              "label": "NET",
+              "path": "net_hash_human"
+            },
+            {
+              "default": "-",
+              "label": "UP",
+              "path": "uptime"
+            },
+            {
+              "default": "-",
+              "label": "IN/OUT",
+              "path": "nodes_inout"
+            },
+            {
+              "default": "-",
+              "label": "TOR",
+              "path": "nodes_tor"
+            },
+            {
+              "default": "-",
+              "label": "IPV4",
+              "path": "nodes_ipv4"
+            }
+          ],
+          "h": 52,
+          "path": "/opt/pixoo-local/data/xmr.json",
+          "source": "file",
+          "type": "kv",
+          "w": 62,
+          "x": 1,
+          "y": 11
+        }
+      ]
+    }
+  ]
+}

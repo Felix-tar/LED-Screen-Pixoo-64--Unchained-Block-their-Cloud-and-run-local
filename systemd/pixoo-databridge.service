@@ -1,0 +1,22 @@
+# Host-side data bridge — fetches host-local APIs (that the macvlan container
+# can't reach) into /opt/pixoo-local/data/*.json for the widgets to read.
+# Installed + enabled by scripts/install.sh. Runs on the HOST (not in the container).
+[Unit]
+Description=pixoo-local data bridge (host APIs -> shared JSON files for widgets)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# uses the host venv (adds paho-mqtt for custom MQTT sources); falls back to
+# system python3 if the venv is absent.
+ExecStart=/bin/sh -c 'exec "$(command -v /opt/pixoo-local/.hostvenv/bin/python || echo /usr/bin/python3)" /opt/pixoo-local/scripts/data_bridge.py'
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/pixoo-local/data
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target
